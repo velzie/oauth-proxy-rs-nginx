@@ -741,7 +741,6 @@ dependencies = [
  "axum-macros",
  "getopts",
  "hmac",
- "hyper 0.14.27",
  "jwt",
  "reqwest",
  "serde",

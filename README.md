@@ -22,16 +22,16 @@ git clone https://github.com/nginx/nginx
 cd nginx
 ./auto/configure --add-dynamic-module=../nginx-jwt-module
 make
-cp objs/ngx_http_auth_jwt_module.so /usr/lib/nginx/modules/ngx_http_auth_jwt_module.so
+make install
 
-# you must now launch nginx with ./objs/nginx or you will most likely encounter symbol lookup errors
+# make sure /usr/local/nginx/ is in your PATH
 ```
 
 ## Usage
 
 - You will need to generate a secure JWT secret key. `./keygen.sh` will do this for you.
 
-To start the auth server, run `oauth-proxy-rs-nginx -k /path/to/keys/secret.pem -p 3000 --host 0.0.0.0 --client-id your_github_oauth_client_id --client-secret your_github_oauth_client_secret --authorized-users authorized_user_ids --authorized-orgs authorized_org_ids -h`
+To start the auth server, run `oauth-proxy-rs-nginx -k /path/to/oauth-proxy-rs-nginx/keys/secret.pem -p 3000 --host 0.0.0.0 --client-id your_github_oauth_client_id --client-secret your_github_oauth_client_secret --authorized-users authorized_user_ids --authorized-orgs authorized_org_ids -h`
 
 ```
 Usage: oauth-proxy-rs-nginx [options]
@@ -52,4 +52,39 @@ Options:
     -h, --help          print this help menu
 ```
 
-To start proxying requests, edit your nginx config to check against the auth-server. Here is an example
+To start proxying requests, edit your nginx config to check against the auth-server. Here is an example:
+
+```nginx
+load_module /usr/local/nginx/modules/ngx_http_auth_jwt_module.so;
+http {
+    server {
+        server_name auth.yourserver.com;
+
+	    location / {
+        	proxy_pass http://127.0.0.1:3000; # same port as you specified in the CLI
+    	}
+        listen 80 ssl;
+    }
+
+    server {
+        server_name restricted_endpoint.yourserver.com;
+
+        auth_jwt_key /path/to/oauth-proxy-rs-nginx/keys/secret.pem file;
+        auth_jwt off;
+
+	    location / {
+            auth_jwt   $cookie_OAuth_Proxy_rs_token;
+        	proxy_pass http://127.0.0.1:7999; # port that you want to proxy
+    	}
+
+        location = /oauth-proxy-rs-nginx-auth-failure {
+            return 302 http://auth.yourserver.com/?callback=http://restricted_endpoint.yourserver.com/oauth-proxy-rs-nginx-set;
+        }
+        location = /oauth-proxy-rs-nginx-set {
+            add_header Set-Cookie "OAuth_Proxy_rs_token=$arg_token;Path=/;Max-Age=86400";
+            return 302 http://restricted_endpoint.yourserver.com;
+        }
+        listen 80 ssl;
+    }
+}
+```

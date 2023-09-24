@@ -11,7 +11,6 @@ axum-extra = { git="https://github.com/tokio-rs/axum" }
 axum-macros = "0.3.8"
 getopts = "0.2.21"
 hmac = "0.12.1"
-hyper = "0.14.27"
 jwt = "0.16.0"
 reqwest = { version="0.11.20", features=["json"]  }
 serde = { version="1.0.188",features=["derive"]}
