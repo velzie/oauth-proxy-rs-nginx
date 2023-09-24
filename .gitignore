@@ -1,0 +1,5 @@
+/target
+/keys/*
+/nginx
+*.so
+/nginx.conf
