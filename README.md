@@ -31,7 +31,7 @@ make install
 
 - You will need to generate a secure JWT secret key. `./keygen.sh` will do this for you.
 
-To start the auth server, run `oauth-proxy-rs-nginx -k /path/to/oauth-proxy-rs-nginx/keys/secret.pem -p 3000 --host 0.0.0.0 --client-id your_github_oauth_client_id --client-secret your_github_oauth_client_secret --authorized-users authorized_user_ids --authorized-orgs authorized_org_ids -h`
+To start the auth server, run `oauth-proxy-rs-nginx -k /path/to/oauth-proxy-rs-nginx/keys/secret.pem -p 3000 --host 0.0.0.0 --client-id your_github_oauth_client_id --client-secret your_github_oauth_client_secret --authorized-users authorized_user_ids --authorized-orgs authorized_org_ids --authorized-domain yourserver.com`
 
 ```
 Usage: oauth-proxy-rs-nginx [options]
@@ -71,6 +71,9 @@ http {
 
         auth_jwt_key /path/to/oauth-proxy-rs-nginx/keys/secret.pem file;
         auth_jwt off;
+
+
+        error_page 401 /oauth-proxy-rs-nginx-auth-failure;
 
 	    location / {
             auth_jwt   $cookie_OAuth_Proxy_rs_token;

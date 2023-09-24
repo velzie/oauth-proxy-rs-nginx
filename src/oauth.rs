@@ -19,7 +19,7 @@ use jwt::SignWithKey;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
-
+use url::Url;
 #[derive(Debug)]
 struct Config {
     client: Client,
@@ -29,6 +29,7 @@ struct Config {
     client_secret: String,
     authorized_users: Vec<String>,
     authorized_orgs: Vec<String>,
+    authorized_domain: String,
 }
 
 pub fn app(
@@ -37,6 +38,7 @@ pub fn app(
     key: Hmac<Sha256>,
     authorized_users: Vec<String>,
     authorized_orgs: Vec<String>,
+    authorized_domain: String,
 ) -> Router {
     let client = reqwest::Client::builder().build().unwrap();
 
@@ -47,6 +49,7 @@ pub fn app(
         client_secret,
         authorized_users,
         authorized_orgs,
+        authorized_domain,
     };
     Router::new()
         .route("/", get(login))
@@ -62,10 +65,18 @@ async fn login(
     Query(params): Query<LoginParams>,
 ) -> Response {
     if let Some(callback) = params.callback {
+        let url = Url::parse(&callback).unwrap();
+        if url.scheme() == "javascript" {
+            return "fuck off".into_response();
+        }
+        if !url.host_str().unwrap().ends_with(&config.authorized_domain) {
+            return "bad domain :(".into_response();
+        }
+
         callbacks
             .write()
             .unwrap()
-            .insert(addr.to_string(), callback);
+            .insert(addr.ip().to_string(), callback);
         Redirect::temporary(&format!(
             "https://github.com/login/oauth/authorize?client_id={}",
             config.client_id
@@ -96,7 +107,7 @@ async fn callback(
 
     if config.authorized_users.contains(&user.id.to_string()) {
         let reader = callbacks.read().unwrap();
-        let callback = reader.get(&addr.to_string()).unwrap();
+        let callback = reader.get(&addr.ip().to_string()).unwrap();
         return sign_jwt(&user, &config, &callback);
     }
 
@@ -109,7 +120,7 @@ async fn callback(
     for org in orgs {
         if config.authorized_orgs.contains(&org.id.to_string()) {
             let reader = callbacks.read().unwrap();
-            let callback = reader.get(&addr.to_string()).unwrap();
+            let callback = reader.get(&addr.ip().to_string()).unwrap();
             return sign_jwt(&user, &config, &callback);
         }
     }

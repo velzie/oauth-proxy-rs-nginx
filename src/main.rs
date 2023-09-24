@@ -20,6 +20,12 @@ async fn main() {
     let mut opts = Options::new();
     opts.optopt("", "authorized-users", "comma separated list of github user IDs (find uid at https://api.github.com/users/your_username)", "");
     opts.optopt("", "authorized-orgs", "comma separated list of github organization IDs (find uid at https://api.github.com/orgs/your_organization)", "");
+    opts.optopt(
+        "",
+        "authorized-domain",
+        "domain to allow callbacks on (eg, coolelectronics.me)",
+        "",
+    );
     opts.optopt("", "client-secret", "oauth client secret", "");
     opts.optopt("", "client-id", "oauth client ID", "");
     opts.optopt("k", "key", "set path to JWT secret", "");
@@ -39,6 +45,7 @@ async fn main() {
         || !matches.opt_present("host")
         || !matches.opt_present("client-secret")
         || !matches.opt_present("client-id")
+        || !matches.opt_present("authorized-domain")
     {
         print_usage(&program, opts);
         return;
@@ -49,6 +56,7 @@ async fn main() {
 
     let client_secret = matches.opt_str("client-secret").unwrap();
     let client_id = matches.opt_str("client-id").unwrap();
+    let authorized_domain = matches.opt_str("authorized-domain").unwrap();
 
     let authorized_users = matches
         .opt_str("authorized-users")
@@ -73,6 +81,7 @@ async fn main() {
         key,
         authorized_users,
         authorized_orgs,
+        authorized_domain,
     );
 
     let listener = tokio::net::TcpListener::bind(format!("{}:{}", host, port))
